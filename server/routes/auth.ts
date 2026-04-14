@@ -223,10 +223,10 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
-    const redirectTo = (state as string) || "/dashboard";
+    const redirectTo = "/dashboard";
     // Redirect to frontend
-    const frontendUrl = process.env.FRONTEND_URL || "https://agentixai-egdvoqed.manus.space";
-    res.redirect(`${frontendUrl}${redirectTo}`);
+   const frontendUrl = process.env.FRONTEND_URL || "https://agentix-frontend-25o6.vercel.app";
+  res.redirect(`${frontendUrl}${redirectTo}`);
   } catch (err) {
     console.error("Google OAuth error:", err);
     res.redirect("/login?error=google_failed");
