@@ -1,41 +1,38 @@
-import { Router, Request, Response } from "express";
-import { z } from "zod";
-import bcrypt from "bcryptjs";
+import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { getDb } from "../db.js";
-
-export const authRouter = Router();
-
+ 
 const JWT_SECRET = process.env.JWT_SECRET || "agentix-jwt-secret-change-in-production";
-const COOKIE_NAME = "agentix_auth";
-
-const RegisterSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  name: z.string().max(100).optional(),
-  company: z.string().max(100).optional(),
-});
-
-const LoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
-
-// ── Ensure users table exists ─────────────────────────────────────────────────
-function ensureUsersTable() {
-  const db = getDb();
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT,
-      name TEXT,
-      company TEXT,
-      google_id TEXT,
-      role TEXT DEFAULT 'customer',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+ 
+export interface AuthRequest extends Request {
+  adminId?: number;
+  [key: string]: any;
+}
+ 
+export function signToken(adminId: number): string {
+  return jwt.sign({ adminId }, JWT_SECRET, { expiresIn: "8h" });
+}
+ 
+export function authMiddleware(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): void {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+ 
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+ 
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { adminId: number };
+    req.adminId = payload.adminId;
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
 }
 
 // ── Helper: extract token from request (cookie OR Authorization header) ───────
